@@ -3,20 +3,14 @@ from authlib.integrations.requests_client import OAuth2Session
 import sqlite3
 import json
 
-# client_secret.json のパス
-CLIENT_SECRET_FILE = "client_secret.json"
-
-# JSONファイルを読み込む
-with open(CLIENT_SECRET_FILE, "r") as file:
-    secrets = json.load(file)
-
-# Google OAuth2 設定
-CLIENT_ID = secrets["web"]["client_id"]
-CLIENT_SECRET = secrets["web"]["client_secret"]
-REDIRECT_URI = secrets["web"]["redirect_uris"][0]
-AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/auth"
-TOKEN_URL = secrets["web"]["token_uri"]
+# Streamlit Secrets から取得
+CLIENT_ID = st.secrets["client_secret"]["client_id"]
+CLIENT_SECRET = st.secrets["client_secret"]["client_secret"]
+REDIRECT_URI = st.secrets["client_secret"]["redirect_uri"]
+AUTHORIZATION_URL = st.secrets["client_secret"]["auth_uri"]
+TOKEN_URL = st.secrets["client_secret"]["token_uri"]
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
+
 
 # データベース初期化
 def init_db():
