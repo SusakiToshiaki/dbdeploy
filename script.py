@@ -1,7 +1,9 @@
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
-import sqlite3
+from google.cloud import firestore
 import json
+import os
+import atexit
 
 # Streamlit Secrets から取得
 CLIENT_ID = st.secrets["client_secret"]["client_id"]
@@ -12,30 +14,33 @@ TOKEN_URL = st.secrets["client_secret"]["token_uri"]
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
 
-# データベース初期化
-def init_db():
-    conn = sqlite3.connect("user_data.db")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS user_preferences (
-            user_id TEXT PRIMARY KEY,
-            favorite_item TEXT
-        )
-    """)
-    return conn
+# Firestoreクライアントの初期化
+def init_firestore():
+    service_account_info = json.loads(st.secrets["firestore"]["service_account_json"])
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "firestore_key.json"
+    with open("firestore_key.json", "w") as f:
+        json.dump(service_account_info, f)
+    return firestore.Client()
 
-# ユーザーの選択を保存
-def save_user_preference(conn, user_id, favorite_item):
-    conn.execute(
-        "INSERT OR REPLACE INTO user_preferences (user_id, favorite_item) VALUES (?, ?)",
-        (user_id, favorite_item),
-    )
-    conn.commit()
+# Firestoreにユーザーデータを保存
+def save_user_preference_firestore(db, user_id, favorite_item):
+    doc_ref = db.collection("user_preferences").document(user_id)
+    doc_ref.set({"favorite_item": favorite_item})
 
-# ユーザーの選択を取得
-def get_user_preference(conn, user_id):
-    cursor = conn.execute("SELECT favorite_item FROM user_preferences WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    return row[0] if row else None
+# Firestoreからユーザーデータを取得
+def get_user_preference_firestore(db, user_id):
+    doc_ref = db.collection("user_preferences").document(user_id)
+    doc = doc_ref.get()
+    if doc.exists:
+        return doc.to_dict().get("favorite_item")
+    return None
+
+# Firestoreキーのクリーンアップ
+def cleanup_firestore_key():
+    if os.path.exists("firestore_key.json"):
+        os.remove("firestore_key.json")
+
+atexit.register(cleanup_firestore_key)
 
 # 初期化
 if "token" not in st.session_state:
@@ -94,10 +99,10 @@ if st.session_state.logged_in and st.session_state.user_info:
         st.success(f"Logged in as: {user_name} ({user_email})")
 
         # データベース
-        conn = init_db()
+        db = init_firestore()
 
         # 前回の選択を取得
-        previous_favorite = get_user_preference(conn, user_email)
+        previous_favorite = get_user_preference_firestore(db, user_email)
         if previous_favorite:
             st.write(f"Your previous favorite: {previous_favorite}")
 
@@ -105,5 +110,5 @@ if st.session_state.logged_in and st.session_state.user_info:
         favorite_item = st.selectbox("Choose your favorite item:", ["Apple", "Banana", "Cherry"], index=0)
 
         if st.button("Save"):
-            save_user_preference(conn, user_email, favorite_item)
+            save_user_preference_firestore(db, user_email, favorite_item)
             st.success(f"Saved your favorite item: {favorite_item}")
