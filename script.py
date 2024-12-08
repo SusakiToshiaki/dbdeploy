@@ -16,11 +16,27 @@ USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
 # Firestoreクライアントの初期化
 def init_firestore():
-    service_account_info = json.loads(st.secrets["firestore"]["service_account_json"])
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "firestore_key.json"
-    with open("firestore_key.json", "w") as f:
-        json.dump(service_account_info, f)
-    return firestore.Client()
+    try:
+        service_account_info = {
+                "type": st.secrets["firestore"]["type"],
+                "project_id": st.secrets["firestore"]["project_id"],
+                "private_key_id": st.secrets["firestore"]["private_key_id"],
+                "private_key": st.secrets["firestore"]["private_key"],
+                "client_email": st.secrets["firestore"]["client_email"],
+                "client_id": st.secrets["firestore"]["client_id"],
+                "auth_uri": st.secrets["firestore"]["auth_uri"],
+                "token_uri": st.secrets["firestore"]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["firestore"]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["firestore"]["client_x509_cert_url"]
+            }
+        
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "firestore_key.json"
+        with open("firestore_key.json", "w") as f:
+            json.dump(service_account_info, f)
+        return firestore.Client()
+    except KeyError as e:
+        st.error("Firestore secrets are missing or incorrectly configured.")
+        raise e
 
 # Firestoreにユーザーデータを保存
 def save_user_preference_firestore(db, user_id, favorite_item):
