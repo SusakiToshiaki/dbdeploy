@@ -18,25 +18,28 @@ USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 def init_firestore():
     try:
         service_account_info = {
-                "type": st.secrets["firestore"]["type"],
-                "project_id": st.secrets["firestore"]["project_id"],
-                "private_key_id": st.secrets["firestore"]["private_key_id"],
-                "private_key": st.secrets["firestore"]["private_key"],
-                "client_email": st.secrets["firestore"]["client_email"],
-                "client_id": st.secrets["firestore"]["client_id"],
-                "auth_uri": st.secrets["firestore"]["auth_uri"],
-                "token_uri": st.secrets["firestore"]["token_uri"],
-                "auth_provider_x509_cert_url": st.secrets["firestore"]["auth_provider_x509_cert_url"],
-                "client_x509_cert_url": st.secrets["firestore"]["client_x509_cert_url"]
-            }
-        
+            "type": st.secrets["firestore"]["type"],
+            "project_id": st.secrets["firestore"]["project_id"],
+            "private_key_id": st.secrets["firestore"]["private_key_id"],
+            "private_key": st.secrets["firestore"]["private_key"].replace("\\n", "\n"),  # 改行処理
+            "client_email": st.secrets["firestore"]["client_email"],
+            "client_id": st.secrets["firestore"]["client_id"],
+            "auth_uri": st.secrets["firestore"]["auth_uri"],
+            "token_uri": st.secrets["firestore"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["firestore"]["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": st.secrets["firestore"]["client_x509_cert_url"]
+        }
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "firestore_key.json"
         with open("firestore_key.json", "w") as f:
             json.dump(service_account_info, f)
         return firestore.Client()
     except KeyError as e:
-        st.error("Firestore secrets are missing or incorrectly configured.")
+        st.error(f"Firestore secrets are missing: {e}")
         raise e
+    except Exception as e:
+        st.error(f"Failed to initialize Firestore: {str(e)}")
+        raise e
+
 
 # Firestoreにユーザーデータを保存
 def save_user_preference_firestore(db, user_id, favorite_item):
@@ -45,11 +48,18 @@ def save_user_preference_firestore(db, user_id, favorite_item):
 
 # Firestoreからユーザーデータを取得
 def get_user_preference_firestore(db, user_id):
-    doc_ref = db.collection("user_preferences").document(user_id)
-    doc = doc_ref.get()
-    if doc.exists:
-        return doc.to_dict().get("favorite_item")
-    return None
+    try:
+        doc_ref = db.collection("user_preferences").document(user_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict().get("favorite_item")
+        else:
+            st.warning(f"No preferences found for user {user_id}.")
+            return None
+    except Exception as e:
+        st.error(f"Error retrieving user preferences: {str(e)}")
+        return None
+
 
 # Firestoreキーのクリーンアップ
 def cleanup_firestore_key():
