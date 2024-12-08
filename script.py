@@ -6,7 +6,7 @@ import json
 # Streamlit Secrets から取得
 CLIENT_ID = st.secrets["client_secret"]["client_id"]
 CLIENT_SECRET = st.secrets["client_secret"]["client_secret"]
-REDIRECT_URI = st.secrets["client_secret"]["redirect_uri"]
+REDIRECT_URI = st.secrets["client_secret"]["redirect_uris"]
 AUTHORIZATION_URL = st.secrets["client_secret"]["auth_uri"]
 TOKEN_URL = st.secrets["client_secret"]["token_uri"]
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
